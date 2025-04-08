@@ -1,11 +1,15 @@
-# AI-MCP-Logger MCP Client
+# NeuralLog MCP Client
 
-Model Context Protocol client for AI-MCP-Logger integration with Claude, enabling AI assistants to directly access logs.
+Model Context Protocol (MCP) client for NeuralLog integration with AI assistants like Claude, enabling them to directly access and manage logs through the NeuralLog system.
+
+## Overview
+
+The NeuralLog MCP Client is a key component of the NeuralLog ecosystem, providing a bridge between AI assistants and the NeuralLog logging system. It implements the Model Context Protocol (MCP) to allow AI models to interact with logs through standardized tools.
 
 ## Installation
 
 ```bash
-npm install -g @ai-mcp-logger/mcp-client
+npm install -g @neurallog/mcp-client
 ```
 
 ## Usage with Claude Desktop
@@ -18,15 +22,15 @@ npm install -g @ai-mcp-logger/mcp-client
 ```json
 {
   "mcpServers": {
-    "ai-logger": {
-      "command": "ai-mcp-logger-client"
+    "neurallog": {
+      "command": "neurallog-mcp-client"
     }
   }
 }
 ```
 
-2. Restart Claude Desktop to load the AI-MCP-Logger MCP client
-3. Claude will now have direct access to logs through the MCP tools
+2. Restart Claude Desktop to load the NeuralLog MCP client
+3. Claude will now have direct access to logs through the NeuralLog MCP tools
 
 ## Running with Docker
 
@@ -39,7 +43,7 @@ The MCP client is designed to be run with Docker in interactive mode, which allo
 npm run docker:build
 
 # Or directly with Docker
-docker build -t ai-mcp-logger-mcp-client .
+docker build -t neurallog-mcp-client .
 ```
 
 ### Running with Docker
@@ -56,10 +60,10 @@ You can also run the Docker container directly with custom settings:
 
 ```bash
 # Run with a local server
-docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 neurallog-mcp-client
 
 # Run with a remote server
-docker run -i -e WEB_SERVER_URL=http://your-server-address:3030 ai-mcp-logger-mcp-client
+docker run -i -e WEB_SERVER_URL=http://your-server-address:3030 neurallog-mcp-client
 ```
 
 ### Important Docker Flags
@@ -78,20 +82,20 @@ When running both the server and MCP client with Docker, you have two options fo
    docker-compose up -d
 
    # Run the MCP client with host networking
-   docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+   docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 neurallog-mcp-client
    ```
 
 2. **Docker Network** (More isolated):
    ```bash
    # Create a Docker network
-   docker network create ai-mcp-logger-network
+   docker network create neurallog-network
 
    # Run the server connected to the network
    cd ../server
    docker-compose up -d
 
    # Run the MCP client connected to the network
-   docker run -i --network ai-mcp-logger-network -e WEB_SERVER_URL=http://ai-mcp-logger-server:3030 ai-mcp-logger-mcp-client
+   docker run -i --network neurallog-network -e WEB_SERVER_URL=http://neurallog-server:3030 neurallog-mcp-client
    ```
 
 ### Testing with Docker
@@ -99,7 +103,7 @@ When running both the server and MCP client with Docker, you have two options fo
 To test the MCP client with Docker, pipe JSON-RPC requests to the container:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_logs","arguments":{}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_logs","arguments":{}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 neurallog-mcp-client
 ```
 
 ## Available MCP Tools
@@ -186,29 +190,61 @@ To test the entire system end-to-end:
 4. Test appending and retrieving data:
    ```bash
    # Append to a log
-   echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"append_to_log","arguments":{"log_name":"test-log","data":{"message":"Test message","level":"info"}}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+   echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"append_to_log","arguments":{"log_name":"test-log","data":{"message":"Test message","level":"info"}}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 neurallog-mcp-client
 
    # Retrieve the log
-   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_log_by_name","arguments":{"log_name":"test-log"}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_log_by_name","arguments":{"log_name":"test-log"}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 neurallog-mcp-client
    ```
 
 ## Configuration
 
 The MCP client can be configured using environment variables:
 
-- `WEB_SERVER_URL` - URL of the AILogger server (default: http://localhost:3030)
-- `LOG_DIR` - Directory to store log files (default: C:\AILogger-Logs on Windows, /var/log/ailogger on Unix)
+- `WEB_SERVER_URL` - URL of the NeuralLog server (default: http://localhost:3030)
+- `LOG_DIR` - Directory to store log files (default: C:\NeuralLog\Logs on Windows, /var/log/neurallog on Unix)
 
-## AI-MCP-Logger Ecosystem
+## NeuralLog Ecosystem
 
-This package is part of the [AI-MCP-Logger](https://github.com/AI-MCP-Logger) ecosystem:
+This package is part of the NeuralLog ecosystem:
 
-- [Server](https://github.com/AI-MCP-Logger/server) - Central logging server
-- [MCP Client](https://github.com/AI-MCP-Logger/mcp-client) - Claude integration via MCP (this package)
-- [TypeScript Client](https://github.com/AI-MCP-Logger/typescript) - TypeScript client
-- [Python Client](https://github.com/AI-MCP-Logger/python) - Python client
-- [C# Client](https://github.com/AI-MCP-Logger/csharp) - C# client
-- [Java Client](https://github.com/AI-MCP-Logger/java) - Java client
+- [Specifications](https://github.com/NeuralLog/specs) - Technical specifications for the NeuralLog system
+- [Server](https://github.com/NeuralLog/server) - Central logging server
+- [MCP Client](https://github.com/NeuralLog/mcp-client) - Claude integration via MCP (this package)
+- [TypeScript Client](https://github.com/NeuralLog/typescript) - TypeScript client
+- [Unity Client](https://github.com/NeuralLog/unity) - Unity client
+- [Python Client](https://github.com/NeuralLog/python) - Python client
+- [Java Client](https://github.com/NeuralLog/java) - Java client
+
+## Architecture
+
+The MCP client is a key component in the NeuralLog architecture, serving as the bridge between AI assistants and the NeuralLog system:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     NeuralLog System                        │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────────────┐  ┌─────────────┐  │
+│  │ NeuralLog   │  │ MCP Server          │  │ NeuralLog   │  │
+│  │ Core        │◄─┤                     │◄─┤ MCP Clients │  │
+│  │ Services    │  │ • Tool Registry     │  │             │  │
+│  │             │  │ • Connection Mgmt   │  │ • TypeScript│  │
+│  │ • Logging   │  │ • Authentication    │  │ • Unity     │  │
+│  │ • Analysis  │  │ • Transport Layer   │  │ • Python    │  │
+│  │ • Actions   │  │ • Request Handling  │  │ • Others    │  │
+│  └─────────────┘  └─────────────────────┘  └─────────────┘  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Future Development
+
+The NeuralLog MCP Client is under active development with the following features planned:
+
+- Enhanced authentication and security
+- Support for more advanced logging features
+- Integration with NeuralLog's rule and action systems
+- Improved error handling and diagnostics
+- Additional MCP tools for advanced log analysis
 
 ## License
 
