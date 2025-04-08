@@ -1,9 +1,19 @@
 # Dependency directories
 node_modules/
+package-lock.json
 
 # Build output
 dist/
 types/
+*.js
+!jest.config.js
+
+# Test files
+test-mcp/
+test-stdio-direct.js
+test-stdio-direct.ts
+test-stdio.js
+test-input.json
 
 # Logs
 logs/

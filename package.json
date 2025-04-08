@@ -2,18 +2,19 @@
   "name": "@ai-mcp-logger/mcp-client",
   "version": "0.1.0",
   "description": "Model Context Protocol client for AI-MCP-Logger integration with Claude",
-  "main": "dist/index.js",
-  "types": "types/index.d.ts",
+  "main": "src/index.js",
+  "type": "module",
   "bin": {
-    "ai-mcp-logger-client": "./dist/index.js"
+    "ai-mcp-logger-client": "./src/index.js"
   },
   "scripts": {
-    "build": "tsc",
-    "build:types": "tsc --declaration --emitDeclarationOnly --outDir types",
-    "prepublishOnly": "npm run build && npm run build:types",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "test": "jest"
+    "build": "tsc src/index.ts --esModuleInterop --target es2022 --module NodeNext --moduleResolution nodenext",
+    "start": "node src/index.js",
+    "dev": "npx tsx src/index.ts",
+    "test": "jest",
+    "docker:build": "docker build -t ai-mcp-logger-mcp-client .",
+    "docker:run": "docker run -i -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client",
+    "docker:run:remote": "docker run -i -e WEB_SERVER_URL=http://your-server-address:3030 ai-mcp-logger-mcp-client"
   },
   "keywords": [
     "ai",
@@ -38,11 +39,12 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
     "@types/jest": "^29.5.10",
-    "typescript": "^5.3.2",
-    "ts-node": "^10.9.1",
+    "@types/node": "^20.17.30",
     "jest": "^29.7.0",
-    "ts-jest": "^29.1.1"
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.3.2"
   }
 }

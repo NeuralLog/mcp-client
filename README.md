@@ -12,7 +12,7 @@ npm install -g @ai-mcp-logger/mcp-client
 
 1. Edit the Claude Desktop configuration file:
 
-**macOS/Linux**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**macOS/Linux**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
@@ -28,12 +28,169 @@ npm install -g @ai-mcp-logger/mcp-client
 2. Restart Claude Desktop to load the AI-MCP-Logger MCP client
 3. Claude will now have direct access to logs through the MCP tools
 
+## Running with Docker
+
+The MCP client is designed to be run with Docker in interactive mode, which allows STDIO to be piped through to Claude or other AI assistants.
+
+### Building the Docker Image
+
+```bash
+# Using npm script
+npm run docker:build
+
+# Or directly with Docker
+docker build -t ai-mcp-logger-mcp-client .
+```
+
+### Running with Docker
+
+```bash
+# Run with a local server
+npm run docker:run
+
+# Run with a remote server (customize the URL in package.json)
+npm run docker:run:remote
+```
+
+You can also run the Docker container directly with custom settings:
+
+```bash
+# Run with a local server
+docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+
+# Run with a remote server
+docker run -i -e WEB_SERVER_URL=http://your-server-address:3030 ai-mcp-logger-mcp-client
+```
+
+### Important Docker Flags
+
+- The `-i` flag is crucial as it keeps STDIN open, allowing JSON-RPC requests to be piped to the MCP client
+- The `--network host` flag allows the container to access services running on the host machine (like the server)
+
+### Docker Networking with Server
+
+When running both the server and MCP client with Docker, you have two options for networking:
+
+1. **Host Network** (Simplest):
+   ```bash
+   # Run the server
+   cd ../server
+   docker-compose up -d
+
+   # Run the MCP client with host networking
+   docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+   ```
+
+2. **Docker Network** (More isolated):
+   ```bash
+   # Create a Docker network
+   docker network create ai-mcp-logger-network
+
+   # Run the server connected to the network
+   cd ../server
+   docker-compose up -d
+
+   # Run the MCP client connected to the network
+   docker run -i --network ai-mcp-logger-network -e WEB_SERVER_URL=http://ai-mcp-logger-server:3030 ai-mcp-logger-mcp-client
+   ```
+
+### Testing with Docker
+
+To test the MCP client with Docker, pipe JSON-RPC requests to the container:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_logs","arguments":{}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+```
+
 ## Available MCP Tools
 
-- `get_logs_ai-logger` - Retrieve all logs (with optional limit)
-- `get_log_by_name_ai-logger` - Retrieve logs with a specific name
-- `append_to_log_ai-logger` - Add a new entry to a log
-- `clear_log_ai-logger` - Clear all entries from a log
+- `get_logs` - Retrieve all log names (with optional limit)
+- `get_log_by_name` - Retrieve entries for a specific log
+- `append_to_log` - Append data to a log
+- `clear_log` - Clear all entries from a log
+- `search` - Search logs with various criteria (server-side search)
+
+### Tool Usage Examples
+
+#### get_logs
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_logs","arguments":{}}}
+```
+
+#### get_log_by_name
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_log_by_name","arguments":{"log_name":"test-log"}}}
+```
+
+#### append_to_log
+```json
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"append_to_log","arguments":{"log_name":"test-log","data":{"message":"Test message","level":"info"}}}}
+```
+
+#### clear_log
+```json
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"clear_log","arguments":{"log_name":"test-log"}}}
+```
+
+#### search
+```json
+{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"search","arguments":{"query":"Test"}}}
+```
+
+Search with field filters:
+```json
+{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search","arguments":{"field_filters":{"data.level":"info"}}}}
+```
+
+## Data Handling Notes
+
+When sending data to the MCP client, be aware of the following:
+
+1. **JSON Objects**: Send JSON objects directly:
+   ```json
+   {"data":{"message":"Test message","level":"info"}}
+   ```
+
+2. **Primitive Values**: Wrap primitive values in a JSON object with a `data` field:
+   ```json
+   {"data":{"data":"This is a test string"}}
+   ```
+
+   Instead of:
+   ```json
+   {"data":"This is a test string"}
+   ```
+
+This ensures that all data is stored as JSON objects in a consistent format.
+
+## End-to-End Testing
+
+To test the entire system end-to-end:
+
+1. Start the server using Docker Compose:
+   ```bash
+   cd ../server
+   docker-compose up -d
+   ```
+
+2. Build the MCP client Docker image:
+   ```bash
+   npm run docker:build
+   ```
+
+3. Test the MCP client with Docker:
+   ```bash
+   echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_logs","arguments":{}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+   ```
+
+4. Test appending and retrieving data:
+   ```bash
+   # Append to a log
+   echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"append_to_log","arguments":{"log_name":"test-log","data":{"message":"Test message","level":"info"}}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+
+   # Retrieve the log
+   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_log_by_name","arguments":{"log_name":"test-log"}}}' | docker run -i --network host -e WEB_SERVER_URL=http://localhost:3030 ai-mcp-logger-mcp-client
+   ```
 
 ## Configuration
 

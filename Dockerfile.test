@@ -1,0 +1,8 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY test-stdio.js .
+
+# Set the entry point to the test script
+ENTRYPOINT ["node", "test-stdio.js"]

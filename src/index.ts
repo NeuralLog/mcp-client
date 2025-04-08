@@ -1,16 +1,19 @@
 #!/usr/bin/env node
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import axios from "axios";
 
-// Silent logging function - does nothing
-function log(level: string, message: string) {
-  // No-op - completely silent
-}
+/**
+ * AI-MCP-Logger MCP Client
+ *
+ * This client implements the Model Context Protocol (MCP) for the AI-MCP-Logger system.
+ * It provides tools for retrieving and searching logs from the AI-MCP-Logger server.
+ */
 
-// Get the web server URL from environment variables or use default
-const webServerUrl = process.env.WEB_SERVER_URL || 'http://localhost:3030';
+// Configuration
+const webServerUrl = process.env.WEB_SERVER_URL || "http://localhost:3030";
 
 // Create an MCP server
 const server = new McpServer({
@@ -18,17 +21,51 @@ const server = new McpServer({
   version: "0.1.0"
 });
 
-// Add get_logs_ai-logger tool
-server.tool("get_logs_ai-logger",
-  { limit: z.number().optional() },
+// Add get_logs tool
+server.tool(
+  "get_logs",
+  { limit: z.number().optional().describe("Maximum number of log names to return (default: 1000)") },
   async (args) => {
     try {
-      const { limit = 10 } = args;
-      log('info', `Getting logs with limit: ${limit}`);
-
       // Forward to Web Server
       const response = await axios.get(`${webServerUrl}/logs`, {
-        params: { limit }
+        params: { limit: args.limit || 1000 }
+      });
+
+      // Return the data directly without additional formatting
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(response.data, null, 2)
+        }]
+      };
+    } catch (error: any) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: true,
+            message: `Error getting logs: ${error.message || String(error)}`
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Add get_log_by_name tool
+server.tool(
+  "get_log_by_name",
+  {
+    log_name: z.string().describe("Name of the log to retrieve"),
+    limit: z.number().optional().describe("Maximum number of log entries to return (default: 100)")
+  },
+  async (args) => {
+    try {
+      // Forward to Web Server
+      const response = await axios.get(`${webServerUrl}/logs/${args.log_name}`, {
+        params: { limit: args.limit || 100 }
       });
 
       return {
@@ -38,11 +75,13 @@ server.tool("get_logs_ai-logger",
         }]
       };
     } catch (error: any) {
-      log('error', `Error getting logs: ${error}`);
       return {
         content: [{
           type: "text",
-          text: `Error: ${error.message || String(error)}`
+          text: JSON.stringify({
+            error: true,
+            message: `Error getting log '${args.log_name}': ${error.message || String(error)}`
+          }, null, 2)
         }],
         isError: true
       };
@@ -50,21 +89,72 @@ server.tool("get_logs_ai-logger",
   }
 );
 
-// Add get_log_by_name_ai-logger tool
-server.tool("get_log_by_name_ai-logger",
+// Add search tool
+server.tool(
+  "search",
   {
-    log_name: z.string(),
-    limit: z.number().optional()
+    query: z.string().optional().describe("Text to search for across all logs"),
+    log_name: z.string().optional().describe("Specific log to search (if omitted, searches all logs)"),
+    start_time: z.string().optional().describe("Filter entries after this timestamp (ISO format)"),
+    end_time: z.string().optional().describe("Filter entries before this timestamp (ISO format)"),
+    field_filters: z.record(z.any()).optional().describe("Filter by specific field values, e.g. {\"level\": \"error\"}"),
+    limit: z.number().optional().describe("Maximum number of entries to return (default: 100)")
   },
   async (args) => {
     try {
-      const { log_name, limit = 10 } = args;
-      log('info', `Getting log by name: ${log_name}, limit: ${limit}`);
+      // Prepare search parameters
+      const params: Record<string, any> = {};
 
+      // Add basic search parameters
+      if (args.query) params.query = args.query;
+      if (args.log_name) params.log_name = args.log_name;
+      if (args.limit) params.limit = args.limit;
+      if (args.start_time) params.start_time = args.start_time;
+      if (args.end_time) params.end_time = args.end_time;
+
+      // Add field filters with field_ prefix
+      if (args.field_filters) {
+        for (const [field, value] of Object.entries(args.field_filters)) {
+          params[`field_${field}`] = value;
+        }
+      }
+
+      // Call the server-side search endpoint
+      const response = await axios.get(`${webServerUrl}/search`, { params });
+
+      // Return the results as JSON (default format for AI consumption)
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(response.data, null, 2)
+        }]
+      };
+    } catch (error: any) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: true,
+            message: `Error searching logs: ${error.message || String(error)}`
+          }, null, 2)
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Add append_to_log tool
+server.tool(
+  "append_to_log",
+  {
+    log_name: z.string().describe("Name of the log to append to"),
+    data: z.any().describe("Data to append to the log")
+  },
+  async (args) => {
+    try {
       // Forward to Web Server
-      const response = await axios.get(`${webServerUrl}/logs/${log_name}`, {
-        params: { limit }
-      });
+      const response = await axios.post(`${webServerUrl}/logs/${args.log_name}`, args.data);
 
       return {
         content: [{
@@ -73,11 +163,13 @@ server.tool("get_log_by_name_ai-logger",
         }]
       };
     } catch (error: any) {
-      log('error', `Error getting log by name: ${error}`);
       return {
         content: [{
           type: "text",
-          text: `Error: ${error.message || String(error)}`
+          text: JSON.stringify({
+            error: true,
+            message: `Error appending to log '${args.log_name}': ${error.message || String(error)}`
+          }, null, 2)
         }],
         isError: true
       };
@@ -85,19 +177,16 @@ server.tool("get_log_by_name_ai-logger",
   }
 );
 
-// Add append_to_log_ai-logger tool
-server.tool("append_to_log_ai-logger",
+// Add clear_log tool
+server.tool(
+  "clear_log",
   {
-    log_name: z.string(),
-    data: z.any()
+    log_name: z.string().describe("Name of the log to clear")
   },
   async (args) => {
     try {
-      const { log_name, data } = args;
-      log('info', `Appending to log: ${log_name}`);
-
       // Forward to Web Server
-      const response = await axios.post(`${webServerUrl}/logs/${log_name}`, data);
+      const response = await axios.delete(`${webServerUrl}/logs/${args.log_name}`);
 
       return {
         content: [{
@@ -106,11 +195,13 @@ server.tool("append_to_log_ai-logger",
         }]
       };
     } catch (error: any) {
-      log('error', `Error appending to log: ${error}`);
       return {
         content: [{
           type: "text",
-          text: `Error: ${error.message || String(error)}`
+          text: JSON.stringify({
+            error: true,
+            message: `Error clearing log '${args.log_name}': ${error.message || String(error)}`
+          }, null, 2)
         }],
         isError: true
       };
@@ -118,63 +209,6 @@ server.tool("append_to_log_ai-logger",
   }
 );
 
-// Add clear_log_ai-logger tool
-server.tool("clear_log_ai-logger",
-  {
-    log_name: z.string()
-  },
-  async (args) => {
-    try {
-      const { log_name } = args;
-      log('info', `Clearing log: ${log_name}`);
-
-      // Forward to Web Server
-      const response = await axios.delete(`${webServerUrl}/logs/${log_name}`);
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(response.data, null, 2)
-        }]
-      };
-    } catch (error: any) {
-      log('error', `Error clearing log: ${error}`);
-      return {
-        content: [{
-          type: "text",
-          text: `Error: ${error.message || String(error)}`
-        }],
-        isError: true
-      };
-    }
-  }
-);
-
-// Start receiving messages on stdin and sending messages on stdout
+// Start the server
 const transport = new StdioServerTransport();
-log('info', "AI-MCP-Logger STDIO client starting...");
-
-// Connect the server to the transport
-server.connect(transport).catch((error: any) => {
-  log('error', `Error connecting to transport: ${error}`);
-  process.exit(1);
-});
-
-log('info', "AI-MCP-Logger STDIO client started");
-
-// Handle process exit
-process.on('exit', () => {
-  log('info', "AI-MCP-Logger STDIO client shutting down");
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error: Error) => {
-  log('error', `Uncaught exception: ${error}`);
-  process.exit(1);
-});
-
-// Handle unhandled rejections
-process.on('unhandledRejection', (reason: any) => {
-  log('error', `Unhandled rejection: ${reason}`);
-  process.exit(1);
-});
+await server.connect(transport);
