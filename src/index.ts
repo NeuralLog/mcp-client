@@ -3,40 +3,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import axios from "axios";
-import fs from "fs";
-import path from "path";
 
-// Configure file logging with fully qualified path
-const DEFAULT_LOG_DIR = process.platform === 'win32'
-  ? path.join('C:', 'AILogger-Logs')
-  : path.join('/var', 'log', 'ailogger');
-
-const LOG_DIR = process.env.LOG_DIR || DEFAULT_LOG_DIR;
-const LOG_FILE = path.join(LOG_DIR, `ailogger-stdio-${new Date().toISOString().replace(/:/g, "-")}.log`);
-
-// Create log directory if it doesn't exist
-if (!fs.existsSync(LOG_DIR)) {
-  try {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  } catch (error) {
-    console.error(`Error creating log directory: ${error}`);
-  }
-}
-
-// Create a simple file logger
-const fileLogger = fs.createWriteStream(LOG_FILE, { flags: 'a' });
-
+// Silent logging function - does nothing
 function log(level: string, message: string) {
-  const timestamp = new Date().toISOString();
-  const logMessage = `${timestamp} [${level.toUpperCase()}] ${message}\n`;
-  fileLogger.write(logMessage);
+  // No-op - completely silent
 }
 
 // Get the web server URL from environment variables or use default
 const webServerUrl = process.env.WEB_SERVER_URL || 'http://localhost:3030';
-
-// Log the web server URL
-log('info', `Using web server URL: ${webServerUrl}`);
 
 // Create an MCP server
 const server = new McpServer({
@@ -191,7 +165,6 @@ log('info', "AI-MCP-Logger STDIO client started");
 // Handle process exit
 process.on('exit', () => {
   log('info', "AI-MCP-Logger STDIO client shutting down");
-  fileLogger.end();
 });
 
 // Handle uncaught exceptions
